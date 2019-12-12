@@ -41,7 +41,7 @@ while read d m t x
 do
   [[ $t != "btrfs" ]] && continue
   >&2 echo "To be scrubbed: $m" # for direct invocations
-done < /proc/mounts
+done < <( cat /proc/mounts | sort -u -k1,1)
 
 
 while read d m t x
@@ -51,7 +51,7 @@ do
   >&2 echo "[`date -Iseconds`] scrubbing $m" # for direct invocations
   btrfs scrub start -Bd $m | tee -a $TMP_OUTPUT
   echo "" | tee -a $TMP_OUTPUT
-done < /proc/mounts
+done < <( cat /proc/mounts | sort -u -k1,1)
 
 echo "----------------------------------------" | tee -a $TMP_OUTPUT
 echo "btrfs scrub job finished on `date -Iseconds`" | tee -a $TMP_OUTPUT
