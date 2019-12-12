@@ -33,29 +33,28 @@ echo "To: $AdminEMail" >> $TMP_OUTPUT
 echo "Subject: $EMAIL_SUBJECT_PREFIX Scrub Job Completed" >> $TMP_OUTPUT
 echo "" >> "$TMP_OUTPUT"
 # timestamp the job
-echo "[`date -Iseconds`] btrfs scrub job started."
-echo "btrfs scrub job started on `date -Iseconds`" >> $TMP_OUTPUT
-echo "----------------------------------------" >> $TMP_OUTPUT
+echo "btrfs scrub job started on `date -Iseconds`" | tee -a $TMP_OUTPUT
+echo "----------------------------------------" | tee -a $TMP_OUTPUT
 
 # for each btrfs type system mounted, scrub and record output
 while read d m t x
 do
   [[ $t != "btrfs" ]] && continue
   >&2 echo "To be scrubbed: $m" # for direct invocations
-done </proc/mounts
+done < /proc/mounts
+
 
 while read d m t x
 do
   [[ $t != "btrfs" ]] && continue
-  echo "[`date -Iseconds`] scrubbing $m" >> $TMP_OUTPUT
-  echo "[`date -Iseconds`] scrubbing $m"
+  echo "[`date -Iseconds`] scrubbing $m" | tee -a $TMP_OUTPUT
   >&2 echo "[`date -Iseconds`] scrubbing $m" # for direct invocations
-  btrfs scrub start -Bd $m >> $TMP_OUTPUT
-  echo "" >> $TMP_OUTPUT
-done </proc/mounts
+  btrfs scrub start -Bd $m | tee -a $TMP_OUTPUT
+  echo "" | tee -a $TMP_OUTPUT
+done < /proc/mounts
 
-echo "----------------------------------------" >> $TMP_OUTPUT
-echo "btrfs scrub job finished on `date -Iseconds`" >> $TMP_OUTPUT
+echo "----------------------------------------" | tee -a $TMP_OUTPUT
+echo "btrfs scrub job finished on `date -Iseconds`" | tee -a $TMP_OUTPUT
 
 >&2 echo "Sending mail to $AdminEMail" # for direct invocations
 
