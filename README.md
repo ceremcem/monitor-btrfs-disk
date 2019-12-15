@@ -12,8 +12,6 @@ Periodically checks the data integrity on the disk and reports the results by e-
 
 ## Finding the corrupted files 
 
-Output is instantaneous after `btrfs scrub`, however paths are relative to their subvolumes, thus it's hard to identify which file belongs to which subvolume:
-
 ```
 sudo btrfs scrub start -B /path/to/mountpoint # -> you should already have done that
 ./get-corrupted-files.sh
