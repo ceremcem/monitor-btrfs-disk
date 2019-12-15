@@ -28,7 +28,7 @@ sudo smartctl -t long -C /dev/sdX
 sudo badblocks -v /dev/sdX
 ```
 
-TODO: Document how to interpret the `smartctl` results.
+TODO: Document how to interpret the `smartctl` results. <br /> 
 TODO2: Add the conversation link from BTRFS mailing list with the subject "Is it logical to use a disk that scrub fails but smartctl succeeds?"
 
 ## "DRDY ERR" check:
