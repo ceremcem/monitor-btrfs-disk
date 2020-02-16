@@ -1,20 +1,22 @@
 #!/bin/bash
+set -eu -o pipefail
+safe_source () { [[ ! -z ${1:-} ]] && source $1; _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; _sdir=$(dirname "$(readlink -f "$0")"); }; safe_source
+# end of bash boilerplate
 
 PERIOD="weekly"
 
 
 show_help(){
     cat <<HELP
-    $(basename $0) /path/to/executable /path/to/credentials
+    $(basename $0) /path/to/credentials
 HELP
     exit 1
 }
 
-[[ -x $1 ]] || show_help
-[[ -f $2 ]] || show_help
+[[ -f ${1:-} ]] || show_help
 
-EXECUTABLE_PATH="$(realpath $1)"
-CREDENTIALS="$(realpath $2)"
+EXECUTABLE_PATH="$_sdir/check-disk-health.sh"
+CREDENTIALS="$(realpath $1)"
 
 [[ $(whoami) = "root" ]] || { sudo $0 "$@"; exit 0; }
 
@@ -53,6 +55,24 @@ WantedBy=timers.target
 
 TIMER
 
+service_file="$SERVICE_PATH/$SERVICE_NAME-supervisor.service"
+echo "installing scrub supervisor"
+cat << EOL > "$service_file"
+[Unit]
+Description=Pause running btrfs scrubs on suspend
+Before=suspend.target
+
+[Service]
+Type=oneshot
+ExecStart=$_sdir/scrub-supervisor.sh
+
+[Install]
+WantedBy=suspend.target
+EOL
+
+
+
+
 # Install dependencies if missing
 hash curl 2> /dev/null || apt-get install curl
 
@@ -60,6 +80,7 @@ hash curl 2> /dev/null || apt-get install curl
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME.service"
 systemctl enable "$SERVICE_NAME.timer"
+systemctl enable "$SERVICE_NAME-supervisor.service"
 systemctl start "$SERVICE_NAME.timer"
 
 echo
