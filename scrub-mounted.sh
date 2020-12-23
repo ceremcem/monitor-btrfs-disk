@@ -11,7 +11,7 @@ echostamp(){
 }
 
 _kill(){
-    $_sdir/cancel-scrubs.sh    
+    $_sdir/cancel-scrubs.sh
     exit 0
 }
 
@@ -37,15 +37,27 @@ scrub_resume_or_start(){
     fi
 }
 
-if [[ "${1:-}" == "--start" ]]; then
+start_flag=$_sdir/scrub-required.txt
+
+if [[ "${1:-}" == "--start" || -f "$start_flag" ]]; then
+    start=true
     resume_only=
 else
+    start=false
     resume_only="--resume-only"
 fi
 
-while read m; do
-  scrub_resume_or_start $resume_only "$m"
-done < <( cat /proc/mounts | awk '$3 == "btrfs" {print $1}' | uniq )
+min_uptime=10
+_uptime=$(awk '{print int($1/60)}' /proc/uptime)
+if [[ $_uptime -lt $min_uptime ]]; then
+    echostamp "Skipping because uptime is lower than $min_uptime min." | tee -a $_sdir/log.txt
+    [[ "$start" = true ]] && touch "$start_flag"
+else
+    [[ -f "$start_flag" ]] && rm "$start_flag"
+    while read m; do
+        scrub_resume_or_start $resume_only "$m"
+    done < <( cat /proc/mounts | awk '$3 == "btrfs" {print $1}' | uniq )
+fi
 
 if [[ -f $TMP_OUTPUT ]]; then
     echostamp "Found $TMP_OUTPUT, sending via email."
