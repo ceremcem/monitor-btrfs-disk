@@ -5,6 +5,7 @@ safe_source () { [[ ! -z ${1:-} ]] && source $1; _dir="$(cd "$(dirname "${BASH_S
 [[ $(whoami) = "root" ]] || { sudo $0 "$@"; exit 0; }
 
 TMP_OUTPUT="/tmp/btrfs-scrub.out"
+start_flag="/tmp/btrfs-scrub-required.txt"
 
 echostamp(){
     echo "`date -Iseconds`: $@"
@@ -37,8 +38,6 @@ scrub_resume_or_start(){
     fi
 }
 
-start_flag=$_sdir/scrub-required.txt
-
 if [[ "${1:-}" == "--start" || -f "$start_flag" ]]; then
     start=true
     resume_only=
@@ -51,7 +50,7 @@ min_uptime=10
 _uptime=$(awk '{print int($1/60)}' /proc/uptime)
 if [[ $_uptime -lt $min_uptime ]]; then
     echostamp "Skipping because uptime is lower than $min_uptime min." | tee -a $_sdir/log.txt
-    [[ "$start" = true ]] && touch "$start_flag"
+    [[ "$start" = true ]] && date > "$start_flag"
 else
     [[ -f "$start_flag" ]] && rm "$start_flag"
     while read m; do
