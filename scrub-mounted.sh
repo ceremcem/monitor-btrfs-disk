@@ -97,7 +97,3 @@ if [[ -f $TMP_OUTPUT ]]; then
     echostamp "Mail is sent to $AdminEMail"
 fi
 
-
-# This script is designed to be called by "on-idle.sh". So wait
-# untill interrupted or 30 minutes at most.
-sleep 30m
