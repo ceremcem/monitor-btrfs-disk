@@ -71,6 +71,15 @@ trap _kill EXIT
 wait # for any scrub operation
 echostamp "All scrub operations are completed."
 
+scrub_error_status(){
+    local result=$1
+    if cat $result | grep -i "Error summary:" | grep -v "no errors found" -q; then
+        echo "ERRORS FOUND"
+    else
+        echo "No errors found"
+    fi
+}
+
 # Send report if available
 if [[ -f $TMP_OUTPUT ]]; then
     echostamp "Found $TMP_OUTPUT, sending via email."
@@ -81,7 +90,7 @@ if [[ -f $TMP_OUTPUT ]]; then
 
     echo "From: "$AuthUserName" <$AuthUser>" > $mail
     echo "To: $AdminEMail" >> $mail
-    echo "Subject: $HOSTNAME - BTRFS Scrub Job Completed" >> $mail
+    echo "Subject: $HOSTNAME - BTRFS Scrub Job: $(scrub_error_status $TMP_OUTPUT)" >> $mail
     echo "" >> "$mail"
     cat $TMP_OUTPUT >> $mail
 
