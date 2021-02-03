@@ -1,11 +1,16 @@
 #!/bin/bash
+#
+# Description
+# ------------
+# This script resumes any interrupted scrub operations.
+# Mark the state as "dirty" with "--mark" switch.
+#
 set -eu
 safe_source () { [[ ! -z ${1:-} ]] && source $1; _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; _sdir=$(dirname "$(readlink -f "$0")"); }; safe_source
 
 [[ $(whoami) = "root" ]] || { sudo $0 "$@"; exit 0; }
 
 TMP_OUTPUT="/tmp/btrfs-scrub.out"
-start_flag="/tmp/btrfs-scrub-required.txt"
 
 echostamp(){
     echo "`date -Iseconds`: $@"
@@ -13,14 +18,25 @@ echostamp(){
 
 _kill(){
     $_sdir/cancel-scrubs.sh
+    sleep 2
     exit 0
 }
 
-scrub_resume_or_start(){
-    local resume_only=false
-    [[ "$1" = "--resume-only" ]] && { resume_only=true; shift; }
+scrub_status(){
+    btrfs scrub status $fs | grep -E "^Status" | awk -F: '{print $2}' | tr -d ' '
+}
+
+scrub_mark_dirty(){
+    btrfs scrub start $fs
+    while sleep 1; do
+        [[ $(scrub_status $fs) == "running" ]] && break
+    done
+    btrfs scrub cancel $fs
+}
+
+scrub_resume(){
     local fs=$1
-    local curr=`btrfs scrub status $fs | grep -E "^Status" | awk -F: '{print $2}' | tr -d ' '`
+    local curr=$(scrub_status $fs)
     if [[ "$curr" = "running" ]]; then
         echostamp "Scrub is already running for $fs"
     elif [[ "$curr" = "aborted" ]] || [[ "$curr" = "interrupted" ]]; then
@@ -28,36 +44,34 @@ scrub_resume_or_start(){
         btrfs scrub resume -Bd $fs && \
             btrfs scrub status -d $fs >> $TMP_OUTPUT &
     else
-        if [[ "$resume_only" = false ]]; then
-            echostamp "Starting scrub job for $fs" 
-            btrfs scrub start -Bd $fs && \
-                btrfs scrub status -d $fs >> $TMP_OUTPUT &
-        else
-            echostamp "Not starting a scrub job for $fs" 
-        fi
+        echostamp "Nothing to do for $fs"
     fi
 }
 
-if [[ "${1:-}" == "--start" || -f "$start_flag" ]]; then
-    start=true
-    resume_only=
-else
-    start=false
-    resume_only="--resume-only"
+[[ "${1:-}" == "--mark" ]] && trigger_new=true || trigger_new=false
+
+# Process all apparent devices
+while read fs; do
+    if $trigger_new; then
+        echostamp "Marking $fs as dirty."
+        scrub_mark_dirty $fs
+    else
+        scrub_resume $fs
+    fi
+done < <( cat /proc/mounts | awk '$3 == "btrfs" {print $1}' | uniq )
+
+if $trigger_new; then
+    echostamp "All available devices are marked as dirty. Exiting."
+    exit 0
 fi
 
-min_uptime=10
-_uptime=$(awk '{print int($1/60)}' /proc/uptime)
-if [[ $_uptime -lt $min_uptime ]]; then
-    echostamp "Skipping because uptime is lower than $min_uptime min." | tee -a $_sdir/log.txt
-    [[ "$start" = true ]] && date > "$start_flag"
-else
-    [[ -f "$start_flag" ]] && rm "$start_flag"
-    while read m; do
-        scrub_resume_or_start $resume_only "$m"
-    done < <( cat /proc/mounts | awk '$3 == "btrfs" {print $1}' | uniq )
-fi
+# cancel all running scrubs on interrupt
+trap _kill EXIT
 
+wait # for any scrub operation
+echostamp "All scrub operations are completed."
+
+# Send report if available
 if [[ -f $TMP_OUTPUT ]]; then
     echostamp "Found $TMP_OUTPUT, sending via email."
     source $_sdir/credentials.sh
@@ -83,7 +97,7 @@ if [[ -f $TMP_OUTPUT ]]; then
     echostamp "Mail is sent to $AdminEMail"
 fi
 
-if [[ -n $resume_only ]]; then
-    trap _kill EXIT 
-    sleep Infinity
-fi
+
+# This script is designed to be called by "on-idle.sh". So wait
+# untill interrupted or 30 minutes at most.
+sleep 30m

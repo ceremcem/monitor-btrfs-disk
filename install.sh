@@ -10,6 +10,7 @@ hash curl 2> /dev/null || apt-get install curl
 echo "Dependencies installed."
 
 PERIOD="weekly"
+#PERIOD="*-*-* 22:30:00"
 EXECUTABLE_PATH="$_sdir/scrub-mounted.sh"
 
 SERVICE_NAME="btrfs-scrub-mounted"
@@ -24,10 +25,7 @@ Description=Run 'btrfs scrub' on all mounted disks.
 [Service]
 User=root
 Type=forking
-ExecStart=$EXECUTABLE_PATH --start
-
-[Install]
-WantedBy=timers.target
+ExecStart=$EXECUTABLE_PATH --mark
 
 SERVICE
 
@@ -50,7 +48,8 @@ echo "+++ Installed systemd timers."
 
 ## installing systemd services + timers
 systemctl daemon-reload
-systemctl enable "$SERVICE_NAME.service" "$SERVICE_NAME.timer"
+systemctl disable "$SERVICE_NAME.service" # for backwards compatibilty
+systemctl enable "$SERVICE_NAME.timer"
 systemctl start "$SERVICE_NAME.timer"
 
 echo
