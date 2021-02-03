@@ -8,6 +8,17 @@ Periodically checks the data integrity on the disk and reports the results by e-
 1. Copy `credentials.sh.example` and modify accordingly.
 2. `./install.sh`
 
+# Usage
+
+### Continue when idle
+
+```
+on-idle.sh 00:02:00 ./scrub-mounted.sh
+```
+
+See https://github.com/ceremcem/on-idle
+
+
 # Other Examinations:
 
 ## Finding the corrupted files 
