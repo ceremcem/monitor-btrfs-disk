@@ -161,40 +161,10 @@ if ! $do_run; then
 fi
 
 wait # for any scrub operation
-echostamp "Done."
-
-scrub_error_status(){
-    local result=$1
-    if cat $result | grep -i "Error summary:" | grep -v "no errors found" -q; then
-        echo "ERRORS FOUND"
-    else
-        echo "Success."
-    fi
-}
 
 # Send report if available
 if [[ -f $TMP_OUTPUT ]]; then
-    echostamp "Found $TMP_OUTPUT, sending via email."
-    source $_sdir/credentials.sh
-
-    mail=$(mktemp)
-    AuthUserName="Disk Monitor"
-
-    echo "From: "$AuthUserName" <$AuthUser>" > $mail
-    echo "To: $AdminEMail" >> $mail
-    echo "Subject: $HOSTNAME - BTRFS Scrub Job: $(scrub_error_status $TMP_OUTPUT)" >> $mail
-    echo "" >> "$mail"
-    cat $TMP_OUTPUT >> $mail
-
-    curl \
-      --ssl-reqd \
-      --mail-from "<$AuthUser>" \
-      --mail-rcpt "<$AdminEMail>" \
-      --url "smtps://$mailhub" \
-      --user "$AuthUser:$AuthPass" \
-      --upload-file "$mail" \
-      && { rm "$TMP_OUTPUT"; rm $mail; } || true
-
-    echostamp "Mail is sent to $AdminEMail"
+    $_sdir/send-email.sh $TMP_OUTPUT
 fi
 
+echostamp "Done."
