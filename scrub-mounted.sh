@@ -76,7 +76,7 @@ scrub_error_status(){
     if cat $result | grep -i "Error summary:" | grep -v "no errors found" -q; then
         echo "ERRORS FOUND"
     else
-        echo "No errors found"
+        echo "Success."
     fi
 }
 

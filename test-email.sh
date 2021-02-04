@@ -2,43 +2,39 @@
 set -u
 safe_source () { [[ ! -z ${1:-} ]] && source $1; _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; _sdir=$(dirname "$(readlink -f "$0")"); }; safe_source
 
-#######################################################
-# This is a helper script to be used in a systemd timer
-# or cron job to scrub all mounted btrfs filessytems
-#
-# $Author: gbrks
-# $Modified: ceremcem
-# $Revision 0.11
-# $Date: 2015.05.15
-#
+TMP_OUTPUT="/tmp/btrfs-scrub.out"
 
-# Import the credentials
-[[ ! -f ${1:-} ]] && { echo "Usage: $(basename $0) /path/to/credentials"; exit 1; }
-safe_source $1
+err=
+case ${1:-} in
+    --error)
+        err="Some error"
+        ;;
+    --success)
+        ;;
+    -h|--help|'')
+        echo "Usage: $(basename $0) --error|--success"
+        exit 1
+        ;;
+    *)
+        echo "Unrecognized option."
+        exit 1
+        ;;
+esac
 
-AuthUserName="Disk Monitor"
-EMAIL_SUBJECT_PREFIX="$HOSTNAME"
+cat << EOL > $TMP_OUTPUT
+UUID:             1be73c45-dcbe-4b1c-864e-b7ba9d1592c4
 
-TMP_OUTPUT="/tmp/mail-test.txt"
+Scrub device /dev/mapper/heybe-root (id 1) history
+Scrub resumed:    Thu Feb  4 07:06:51 2021
+Status:           aborted
+Duration:         1:21:32
+Total to scrub:   846.02GiB
+Rate:             92.46MiB/s
+Error summary:    ${err:-no errors found}
+EOL
 
-# mail header to the file
-echo "From: "$AuthUserName" <$AuthUser>" > $TMP_OUTPUT
-echo "To: $AdminEMail" >> $TMP_OUTPUT
-echo "Subject: Testing" >> $TMP_OUTPUT
-echo "" >> "$TMP_OUTPUT"
-# timestamp the job
-
->&2 echo "Sending mail to $AdminEMail" # for direct invocations
-
-curl \
-  --ssl-reqd \
-  --mail-from "<$AuthUser>" \
-  --mail-rcpt "<$AdminEMail>" \
-  --url "smtps://$mailhub" \
-  --user "$AuthUser:$AuthPass" \
-  --upload-file "$TMP_OUTPUT" \
-  -v \
-  && rm "$TMP_OUTPUT" || true
-
-exit 0;
-
+$_sdir/scrub-mounted.sh &
+sleep 5
+$_sdir/cancel-scrubs.sh
+wait
+echo "Test script finished."
