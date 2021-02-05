@@ -20,7 +20,7 @@ else
     source $_sdir/credentials.sh
     echo "Found $mail_body, sending $AdminEMail"
 
-    mail=`mktemp -q /tmp/scrub-result.XXXXXX`
+    mail="/tmp/scrub-result.mail"
     AuthUserName="Disk Monitor"
 
     echo "From: "$AuthUserName" <$AuthUser>" > $mail
@@ -29,18 +29,28 @@ else
     echo "" >> "$mail"
     cat $mail_body >> $mail
 
+    if [[ -n ${Proxy:-} ]]; then
+        echo "------------------------------------"
+        echo "Using SOCKS5 proxy: $Proxy"
+        echo "------------------------------------"
+        proxy_str="-x socks5h://$Proxy"
+    fi
+
     if timeout 30 curl \
-      --ssl-reqd \
-      --mail-from "<$AuthUser>" \
-      --mail-rcpt "<$AdminEMail>" \
-      --url "smtps://$mailhub" \
-      --user "$AuthUser:$AuthPass" \
-      --upload-file "$mail"; then
+        ${proxy_str:-} \
+        --ssl-reqd \
+        --mail-from "<$AuthUser>" \
+        --mail-rcpt "<$AdminEMail>" \
+        --url "smtps://$mailhub" \
+        --user "$AuthUser:$AuthPass" \
+        --upload-file "$mail"; 
+    then
 
         rm "$mail_body"
         rm $mail
         echo "`date -u`: Mail is sent to $AdminEMail"
     else
+        rm $mail
         echo
         echo "`date -u`: Failed to send mail."
         exit 1
