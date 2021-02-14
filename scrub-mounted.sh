@@ -159,7 +159,7 @@ fi
 
 if ! $do_run; then
     # cancel all running scrubs on interrupt
-    trap _kill SIGINT
+    trap _kill EXIT
 fi
 
 wait # for any scrub operation
