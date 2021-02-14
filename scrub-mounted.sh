@@ -72,8 +72,8 @@ scrub_start(){
 
 scrub_mark_dirty(){
     local fs=$1
-    if [[ "$(scrub_status $fs)" == "" ]]; then 
-        # clean state 
+    if [[ "$(scrub_status $fs)" == "" || "$(scrub_status $fs)" == "finished" ]]; then
+        # clean state
         echostamp "Marking $fs as dirty."
         btrfs scrub start $fs
         while sleep 1; do
