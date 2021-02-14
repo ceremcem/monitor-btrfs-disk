@@ -46,6 +46,7 @@ echostamp(){
 }
 
 _kill(){
+    echo "Cancelling all running scrubs."
     $_sdir/cancel-scrubs.sh
     sleep 2
     exit 0
@@ -91,8 +92,7 @@ scrub_resume(){
         echostamp "Scrub is already running for $fs"
     elif [[ "$curr" = "aborted" ]] || [[ "$curr" = "interrupted" ]]; then
         echostamp "Continuing interrupted scrub for $fs"
-        btrfs scrub resume -Bd $fs && \
-            btrfs scrub status -d $fs >> $TMP_OUTPUT &
+        btrfs scrub resume -Bd $fs 2>&1 >> $TMP_OUTPUT &
     else
         echostamp "Nothing to do for $fs"
     fi
@@ -139,6 +139,8 @@ done; set -- "${args_backup[@]}"
 # "$@" is in the original state,
 # use ${args[@]} for new positional arguments  
 
+>&2 echo "Using output file: $TMP_OUTPUT"
+
 # Process all apparent devices
 while read fs; do
     if $only_mark; then
@@ -157,7 +159,7 @@ fi
 
 if ! $do_run; then
     # cancel all running scrubs on interrupt
-    trap _kill EXIT
+    trap _kill SIGINT
 fi
 
 wait # for any scrub operation
