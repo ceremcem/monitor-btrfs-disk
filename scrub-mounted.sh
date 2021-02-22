@@ -63,7 +63,7 @@ scrub_start(){
     local curr=$(scrub_status $fs)
     if [[ "$curr" != "running" ]]; then
         echostamp "Starting scrub task for $fs"
-        btrfs scrub start -Bd $fs && \
+        btrfs scrub start -B $fs && \
             btrfs scrub status -d $fs >> $TMP_OUTPUT  &
     else
         echostamp "Scrub job is already running for $fs. Skipping."
@@ -92,7 +92,9 @@ scrub_resume(){
         echostamp "Scrub is already running for $fs"
     elif [[ "$curr" = "aborted" ]] || [[ "$curr" = "interrupted" ]]; then
         echostamp "Continuing interrupted scrub for $fs"
-        btrfs scrub resume -Bd $fs 2>&1 >> $TMP_OUTPUT &
+        btrfs scrub resume -B $fs 1>/dev/null 2>&1 \
+            && btrfs scrub status -d $fs \
+            >> $TMP_OUTPUT &
     else
         echostamp "Nothing to do for $fs"
     fi
