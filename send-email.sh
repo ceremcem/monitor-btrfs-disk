@@ -15,7 +15,9 @@ scrub_error_status(){
 
 # Send report if available
 if [[ ! -f $mail_body ]]; then
-    echo "No file found as $mail"
+    echo "No file found as $mail_body"
+elif [[ ! -s $mail_body ]]; then
+    echo "$mail_body seems empty, skipping."
 else
     source $_sdir/credentials.sh
     echo "Found $mail_body, sending $AdminEMail"
