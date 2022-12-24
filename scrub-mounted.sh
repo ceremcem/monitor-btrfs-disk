@@ -17,8 +17,8 @@ show_help(){
 
     Options:
 
-        --mark      : Only mark mounted Btrfs filesystems as dirty, exit immediately.
-        --start     : Start scrubbing on all filesystems and wait till finish.
+        --mark [disk]        : Only mark the disk (or all mounted Btrfs filesystems) as dirty, exit immediately.
+        --start              : Start scrubbing on all filesystems and wait till finish.
 
 HELP
 }
@@ -37,8 +37,6 @@ help_die(){
 }
 
 
-[[ $(whoami) = "root" ]] || { sudo $0 "$@"; exit 0; }
-
 TMP_OUTPUT="/tmp/btrfs-scrub.out"
 
 echostamp(){
@@ -46,9 +44,6 @@ echostamp(){
 }
 
 _kill(){
-    echo "Cancelling all running scrubs."
-    $_sdir/cancel-scrubs.sh
-    sleep 2
     exit 0
 }
 
@@ -73,7 +68,7 @@ scrub_start(){
 scrub_mark_dirty(){
     local fs=$1
     if [[ "$(scrub_status $fs)" == "" || "$(scrub_status $fs)" == "finished" ]]; then
-        # clean state
+        # Eligible to start a scrub
         echostamp "Marking $fs as dirty."
         btrfs scrub start $fs
         while sleep 1; do
@@ -100,6 +95,7 @@ scrub_resume(){
     fi
 }
 
+[[ $(whoami) = "root" ]] || { sudo $0 "$@"; exit 0; }
 
 # Parse command line arguments
 # ---------------------------
@@ -120,6 +116,7 @@ while [ $# -gt 0 ]; do
         # --------------------------------------------------------
         --mark) 
             only_mark=true
+            [[ -n ${2:-} ]] && { scrub_mark_dirty $2; exit 0; }
             ;;
         --start)
             do_run=true
